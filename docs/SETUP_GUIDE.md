@@ -10,6 +10,7 @@ This guide walks through the complete setup of the ARC-M project environment.
 4. [ROS 2 Installation](#4-ros-2-installation)
 5. [Project Configuration](#5-project-configuration)
 6. [Verification](#6-verification)
+7. [macOS Docker Setup](#7-macos-dockers-setup)
 
 ---
 
@@ -300,6 +301,40 @@ python ~/arc-m-project/scripts/train_recovery_policy.py \
 
 ---
 
+## 7. macOS Docker Setup
+
+For macOS users, we provide a Dockerized ROS 2 Jazzy environment. This allows you to develop ROS 2 nodes and visualize outputs without a Linux machine.
+
+### Prerequisites
+- Docker Desktop
+- [uv](https://github.com/astral-sh/uv)
+
+### Setup
+
+1. **Build the container**:
+   ```bash
+   ./scripts/ros2_docker.sh build
+   ```
+
+2. **Start the environment**:
+   ```bash
+   ./scripts/ros2_docker.sh up
+   ```
+
+3. **Enter the shell**:
+   ```bash
+   ./scripts/ros2_docker.sh shell
+   ```
+
+4. **Build the workspace (inside container)**:
+   ```bash
+   # Inside docker container
+   colcon build --symlink-install
+   source install/setup.bash
+   ```
+
+---
+ 
 ## Troubleshooting
 
 ### Isaac Sim Won't Launch

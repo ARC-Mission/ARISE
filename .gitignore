@@ -1,0 +1,106 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+share/python-wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+MANIFEST
+
+# Virtual Environments
+venv/
+.venv/
+env/
+env_isaaclab/
+
+# Installer logs
+pip-log.txt
+pip-delete-this-directory.txt
+
+# Unit test / coverage reports
+htmlcov/
+.tox/
+.nox/
+.coverage
+.coverage.*
+.cache
+nosetests.xml
+coverage.xml
+*.cover
+*.py,cover
+.hypothesis/
+.pytest_cache/
+cover/
+
+# Jupyter Notebook
+.ipynb_checkpoints
+
+# pyenv
+.python-version
+
+# celry
+celerybeat-schedule
+celerybeat.pid
+
+# SageMath parsed files
+*.sage.py
+
+# Environments
+.env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+.env.production
+
+# ROS 2
+install/
+log/
+build/
+COLCON_IGNORE
+
+# Isaac Lab / Omniverse
+*.usd
+*.usda
+*.usdc
+# Keep intended asset files if they are in repo, but ignore temp ones
+# logs/ is used for training output
+logs/
+
+# VS Code
+.vscode/
+
+# IntelliJ
+.idea/
+
+# macOS
+.DS_Store
+
+# Docker
+docker-compose.override.yml
+
+# Project Specific
+*.onnx
+# Keep specific models dir structure but ignore large files if desired
+# models/*
+# !models/.gitkeep
+
+# Specfic to this repo structure
+ros2_ws/build/
+ros2_ws/install/
+ros2_ws/log/

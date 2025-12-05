@@ -1,0 +1,34 @@
+# Dockerfile for ROS 2 Jazzy on macOS (development)
+# Based on official ROS 2 Jazzy image
+FROM osrf/ros:jazzy-desktop
+
+# Install basic tools
+RUN apt-get update && apt-get install -y \
+    python3-pip \
+    python3-venv \
+    nano \
+    wget \
+    curl \
+    git \
+    && rm -rf /var/lib/apt/lists/*
+
+# Install Python dependencies for ARC-M
+RUN pip3 install --break-system-packages \
+    torch \
+    numpy \
+    mistralai \
+    onnx \
+    onnxruntime \
+    pyzmq \
+    transforms3d
+
+# Create workspace directory
+WORKDIR /root/ros2_ws
+
+# Setup environment
+RUN echo "source /opt/ros/jazzy/setup.bash" >> ~/.bashrc
+RUN echo "export ROS_DOMAIN_ID=0" >> ~/.bashrc
+RUN echo "export ROS_LOCALHOST_ONLY=0" >> ~/.bashrc
+
+# Copy entrypoint script if we have one, otherwise just use bash
+CMD ["/bin/bash"]

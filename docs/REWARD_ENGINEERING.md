@@ -249,3 +249,11 @@ writer.add_scalar('rewards/torque_penalty', torque_penalty.mean(), step)
 2. [Learning to Walk in Minutes Using Massively Parallel Deep Reinforcement Learning](https://arxiv.org/abs/2109.11978)
 3. [Isaac Lab Documentation](https://isaac-sim.github.io/IsaacLab/)
 4. [Magistral Technical Report](https://arxiv.org/abs/2506.10910)
+
+## Contributing
+
+Contributions are welcome! Please submit a Pull Request.
+
+## License
+
+MIT License

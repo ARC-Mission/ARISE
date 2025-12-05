@@ -1,0 +1,41 @@
+version: '3.8'
+
+services:
+  ros2:
+    build:
+      context: .
+      dockerfile: Dockerfile.ros2
+    container_name: arose_ros2
+    network_mode: host  # Use host networking for ROS 2 discovery
+    # Note: host networking on macOS Docker Desktop has limitations.
+    # We might need explicit port mapping if communicating with outside world,
+    # but for local development between containers it's tricky.
+    # ROS 2 on macOS Docker usually requires PID/IPC sharing or specific settings.
+    # For now, we mount the workspace and run inter-container logic or local shell.
+    
+    volumes:
+      # Mount the ros2_ws from the host
+      - ../ros2_ws:/root/ros2_ws
+      # Mount scripts for convenience
+      - ../scripts:/root/scripts
+      # Mount configs
+      - ../config:/root/config
+      # Mount models
+      - ../models:/root/models
+    
+    environment:
+      - ROS_DOMAIN_ID=0
+      - ROS_LOCALHOST_ONLY=0
+      - MISTRAL_API_KEY=${MISTRAL_API_KEY}
+    
+    # Keep container running
+    command: tail -f /dev/null
+    
+    # Interactive mode support
+    stdin_open: true
+    tty: true
+
+  # Optional: Magistral Local (if using local LLM later)
+  # magistral:
+  #   image: ghcr.io/mistralai/mistral-src:latest
+  #   ...

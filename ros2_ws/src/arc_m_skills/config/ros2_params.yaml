@@ -1,0 +1,50 @@
+# ARC-M ROS 2 Runtime Parameters
+
+# =============================================================================
+# Policy Manager 
+# =============================================================================
+policy_manager:
+  ros__parameters:
+    update_rate: 50.0
+    device: "cpu"             # "cuda" or "cpu"
+    default_policy: "locomotion_flat"
+    auto_switch_enabled: true
+    
+    # Stuck detection
+    stuck_velocity_threshold: 0.05
+    stuck_duration: 2.0
+    orientation_threshold: 0.5
+    
+    # Model paths (relative to package share or absolute)
+    model_paths:
+      locomotion_flat: "/root/models/locomotion_flat.onnx"
+      recovery_stuck: "/root/models/recovery_stuck.onnx"
+
+# =============================================================================
+# State Estimator
+# =============================================================================
+state_estimator:
+  ros__parameters:
+    update_rate: 200.0
+    use_vicon: false
+    filter_type: "ekf"        # "ekf" or "complementary"
+
+# =============================================================================
+# Magistral Planner
+# =============================================================================
+magistral_planner:
+  ros__parameters:
+    update_rate: 1.0          # Low frequency for LLM
+    model: "magistral-medium-latest"
+    enable_reasoning: true
+    planning_horizon: 10.0    # seconds
+
+# =============================================================================
+# Robot Interface
+# =============================================================================
+robot_interface:
+  ros__parameters:
+    robot_type: "anymal_d"
+    control_mode: "position"  # "position", "velocity", "torque"
+    joint_stiffness: 80.0
+    joint_damping: 1.0
