@@ -1,0 +1,240 @@
+# ARC-M Isaac Lab Training Configuration
+# Hierarchical RL for Autonomous Recovery
+
+# =============================================================================
+# Environment Configuration
+# =============================================================================
+env:
+  name: "ARC-M-Recovery-v0"
+  num_envs: 4096              # Parallel environments (reduce for less VRAM)
+  episode_length: 1000        # Max steps per episode
+  
+  # Robot configuration
+  robot:
+    type: "anymal_d"          # Options: anymal_c, anymal_d, spot, go2
+    usd_path: null            # Custom USD path (null = use default)
+    
+  # Terrain configuration  
+  terrain:
+    type: "debris"            # Options: flat, rough, debris, stairs
+    curriculum: true          # Enable terrain curriculum
+    difficulty_range: [0.0, 1.0]
+    
+    debris:
+      density: 0.3            # Objects per m²
+      size_range: [0.05, 0.3] # Object size range (m)
+      mass_range: [0.1, 5.0]  # Object mass range (kg)
+
+# =============================================================================
+# Observation Space
+# =============================================================================
+observations:
+  policy:
+    # Proprioceptive observations
+    base_lin_vel: true        # Base linear velocity (3D)
+    base_ang_vel: true        # Base angular velocity (3D)
+    projected_gravity: true   # Gravity vector in base frame (3D)
+    commands: true            # Velocity commands (3D)
+    dof_pos: true             # Joint positions (12D for quadruped)
+    dof_vel: true             # Joint velocities (12D)
+    actions: true             # Previous actions (12D)
+    
+    # Exteroceptive observations (optional)
+    height_scan: false        # Height scan around robot
+    contact_forces: true      # Foot contact forces (4D)
+    
+  # Noise configuration (domain randomization)
+  noise:
+    base_lin_vel: 0.1
+    base_ang_vel: 0.05
+    dof_pos: 0.01
+    dof_vel: 0.1
+
+# =============================================================================
+# Action Space
+# =============================================================================
+actions:
+  type: "joint_position"      # Options: joint_position, joint_velocity, joint_torque
+  scale: 0.5                  # Action scaling factor
+  clip_range: [-1.0, 1.0]
+  
+  # PD controller gains (for position control)
+  pd_gains:
+    stiffness: 80.0
+    damping: 2.0
+
+# =============================================================================
+# Reward Configuration (Initial - Modified by Magistral)
+# =============================================================================
+rewards:
+  # Primary objectives
+  tracking_lin_vel:
+    weight: 1.5
+    exp_scale: 0.25
+    
+  tracking_ang_vel:
+    weight: 0.75
+    exp_scale: 0.25
+    
+  # Stability rewards
+  base_height:
+    weight: -1.0
+    target: 0.5               # Target height (m)
+    
+  orientation:
+    weight: -0.5
+    
+  # Regularization (energy efficiency)
+  torques:
+    weight: -0.0002
+    
+  dof_acc:
+    weight: -2.5e-7
+    
+  action_rate:
+    weight: -0.01
+    
+  # Recovery-specific rewards (Magistral-designed)
+  debris_displacement:
+    weight: 0.5               # Reward for moving obstacles
+    
+  recovery_progress:
+    weight: 2.0               # Progress toward recovery goal
+    
+  foot_clearance:
+    weight: -0.1              # Penalize dragging feet
+
+# =============================================================================
+# Domain Randomization
+# =============================================================================
+domain_randomization:
+  enabled: true
+  
+  # Physics randomization
+  physics:
+    friction_range: [0.5, 1.5]
+    restitution_range: [0.0, 0.5]
+    
+  # Robot randomization
+  robot:
+    mass_range: [0.9, 1.1]    # Multiplier
+    com_offset_range: [-0.05, 0.05]
+    motor_strength_range: [0.9, 1.1]
+    
+  # External disturbances
+  disturbances:
+    push_interval: [5, 15]    # Random pushes every N seconds
+    push_magnitude: [0, 50]   # Force magnitude (N)
+    
+  # Actuator dynamics
+  actuator:
+    delay_range: [0.0, 0.02]  # Command delay (s)
+
+# =============================================================================
+# Curriculum Learning
+# =============================================================================
+curriculum:
+  enabled: true
+  
+  # Terrain difficulty
+  terrain:
+    initial_difficulty: 0.0
+    max_difficulty: 1.0
+    success_threshold: 0.8    # Success rate to increase difficulty
+    increase_rate: 0.1
+    
+  # Command ranges
+  commands:
+    initial_vel_range: [0.0, 0.5]
+    max_vel_range: [0.0, 2.0]
+
+# =============================================================================
+# Training Configuration (PPO)
+# =============================================================================
+training:
+  algorithm: "ppo"
+  
+  # Training hyperparameters
+  learning_rate: 3.0e-4
+  lr_schedule: "adaptive"     # Options: fixed, adaptive, linear
+  
+  num_epochs: 5
+  num_minibatches: 4
+  
+  gamma: 0.99                 # Discount factor
+  lam: 0.95                   # GAE lambda
+  
+  clip_param: 0.2
+  entropy_coef: 0.01
+  value_loss_coef: 1.0
+  max_grad_norm: 1.0
+  
+  # Policy network
+  policy:
+    type: "mlp"
+    hidden_dims: [512, 256, 128]
+    activation: "elu"
+    
+  # Value network  
+  value:
+    type: "mlp"
+    hidden_dims: [512, 256, 128]
+    activation: "elu"
+    
+  # Training schedule
+  max_iterations: 10000
+  save_interval: 500
+  log_interval: 10
+  
+  # Checkpoint
+  checkpoint_dir: "logs/arc_m_recovery"
+  resume: null                # Path to resume from
+
+# =============================================================================
+# Magistral Integration (Eureka-style)
+# =============================================================================
+magistral:
+  enabled: true
+  model: "magistral-medium-latest"  # Or "magistral-small-2506" for local
+  
+  # Reward generation
+  reward_generation:
+    enabled: true
+    iterations: 5             # Reward refinement iterations
+    samples_per_iteration: 16 # Parallel reward candidates
+    
+  # Feedback loop
+  feedback:
+    enabled: true
+    analyze_interval: 500     # Analyze training every N iterations
+    metrics:
+      - "mean_reward"
+      - "success_rate"
+      - "episode_length"
+      - "torque_magnitude"
+      
+  # Task description for reward generation
+  task_description: |
+    Train a quadruped robot to recover from being stuck in debris.
+    The robot should:
+    1. Detect when it is stuck or trapped
+    2. Generate appropriate recovery motions (wiggling, pivoting, pushing)
+    3. Move debris out of the way if blocking progress
+    4. Return to normal locomotion once free
+    
+    Key constraints:
+    - Minimize energy consumption
+    - Avoid aggressive motions that could damage the robot
+    - Maintain stability during recovery
+    - Complete recovery within reasonable time
+
+# =============================================================================
+# Export Configuration
+# =============================================================================
+export:
+  format: "onnx"              # Export format
+  quantization: null          # Options: null, "int8", "fp16"
+  
+  # Input/output specifications
+  observation_dim: 48         # Will be calculated automatically
+  action_dim: 12              # For quadruped joint positions

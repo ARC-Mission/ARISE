@@ -1,0 +1,217 @@
+# Magistral LLM Configuration for ARC-M
+# Reasoning model settings for reward generation and analysis
+
+# =============================================================================
+# Model Selection
+# =============================================================================
+model:
+  # Options:
+  # - "magistral-medium-latest" (API, most capable)
+  # - "magistral-small-2506" (local, 24B params)
+  name: "magistral-medium-latest"
+  
+  # Deployment mode
+  # - "api": Use Mistral API (requires MISTRAL_API_KEY)
+  # - "local": Self-hosted via vLLM or Ollama
+  # - "ollama": Use Ollama with GGUF quantization
+  deployment: "api"
+  
+  # Local deployment settings (if deployment != "api")
+  local:
+    # vLLM server endpoint
+    endpoint: "http://localhost:8000/v1"
+    
+    # Ollama model name (for GGUF)
+    ollama_model: "hf.co/mistralai/Magistral-Small-2506_gguf:Q4_K_M"
+    
+    # Tensor parallelism (for multi-GPU)
+    tensor_parallel_size: 2
+    
+    # Max context length
+    max_model_len: 40960
+
+# =============================================================================
+# Generation Parameters
+# =============================================================================
+generation:
+  # Temperature controls randomness (0.0 = deterministic, 1.0 = creative)
+  temperature: 0.7
+  
+  # Top-p nucleus sampling
+  top_p: 0.95
+  
+  # Max tokens for reward function generation
+  max_tokens: 4096
+  
+  # Number of candidate reward functions to generate
+  num_candidates: 16
+  
+  # Retry attempts on failure
+  max_retries: 3
+  
+  # Timeout per request (seconds)
+  timeout: 120
+
+# =============================================================================
+# Reasoning Configuration
+# =============================================================================
+reasoning:
+  # Enable chain-of-thought reasoning
+  chain_of_thought: true
+  
+  # Reasoning depth (affects thinking time)
+  # Options: "low", "medium", "high"
+  depth: "medium"
+  
+  # Show reasoning trace in output
+  show_trace: true
+
+# =============================================================================
+# Reward Generation Prompts
+# =============================================================================
+prompts:
+  # System prompt for reward engineering
+  system: |
+    You are an expert reward engineer specializing in reinforcement learning for robotics.
+    Your expertise includes:
+    - Quadruped locomotion and recovery behaviors
+    - Reward shaping for sparse-reward problems
+    - Balancing multiple objectives (task completion, stability, efficiency)
+    - PyTorch/GPU-optimized reward computations
+    
+    Guidelines for reward design:
+    1. Use exponential decay for distance-based rewards (better gradient signal)
+    2. Include regularization terms to prevent energy waste
+    3. Add curriculum-compatible difficulty scaling
+    4. Ensure rewards are bounded to prevent training instability
+    5. Use differentiable operations compatible with autodiff
+  
+  # Task-specific prompt template
+  task_template: |
+    Design a reward function for the following task:
+    
+    {task_description}
+    
+    Available observations:
+    {observation_space}
+    
+    Requirements:
+    - Function name: compute_reward
+    - Arguments: (obs_dict: Dict[str, Tensor], actions: Tensor, reset_buf: Tensor)
+    - Return: Tensor of shape (num_envs,)
+    - Use PyTorch operations only
+    - Include detailed comments
+    
+    {previous_results}
+    
+    Output the complete Python function wrapped in ```python``` code blocks.
+  
+  # Analysis prompt for training feedback
+  analysis_template: |
+    Analyze the following training metrics and identify issues:
+    
+    Metrics:
+    {metrics}
+    
+    Training curves:
+    {curves}
+    
+    Provide:
+    1. Diagnosis of any problems
+    2. Specific recommendations for reward modification
+    3. Suggested hyperparameter changes
+    4. Confidence level in recommendations
+
+# =============================================================================
+# Feedback Loop Configuration
+# =============================================================================
+feedback:
+  # Enable automatic reward refinement
+  enabled: true
+  
+  # Analyze training every N iterations
+  analyze_interval: 500
+  
+  # Metrics to monitor
+  metrics:
+    - name: "mean_reward"
+      threshold_low: 0.0
+      threshold_high: null
+      
+    - name: "success_rate"
+      threshold_low: 0.3
+      threshold_high: 0.95
+      
+    - name: "episode_length"
+      threshold_low: 100
+      threshold_high: null
+      
+    - name: "torque_magnitude"
+      threshold_low: null
+      threshold_high: 100.0
+      
+    - name: "orientation_error"
+      threshold_low: null
+      threshold_high: 0.5
+  
+  # Automatic reward refinement triggers
+  triggers:
+    # Refine if reward stagnates
+    reward_plateau:
+      enabled: true
+      patience: 200  # iterations
+      min_improvement: 0.01
+      
+    # Refine if success rate too low
+    low_success:
+      enabled: true
+      threshold: 0.3
+      check_after: 1000  # iterations
+      
+    # Refine if training unstable
+    instability:
+      enabled: true
+      reward_std_threshold: 10.0
+
+# =============================================================================
+# Safety and Validation
+# =============================================================================
+safety:
+  # Validate generated code before execution
+  validate_code: true
+  
+  # Sandbox execution for testing
+  sandbox: true
+  
+  # Maximum allowed reward magnitude
+  max_reward: 1000.0
+  
+  # Reject rewards with these patterns
+  forbidden_patterns:
+    - "os.system"
+    - "subprocess"
+    - "eval("
+    - "exec("
+    - "__import__"
+
+# =============================================================================
+# Caching and Logging
+# =============================================================================
+cache:
+  # Cache generated rewards
+  enabled: true
+  directory: "logs/magistral_cache"
+  
+  # Reuse cached rewards for similar tasks
+  similarity_threshold: 0.9
+
+logging:
+  # Log all Magistral interactions
+  enabled: true
+  directory: "logs/magistral_logs"
+  
+  # Log level
+  level: "INFO"
+  
+  # Save reasoning traces
+  save_traces: true

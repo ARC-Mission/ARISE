@@ -1,0 +1,247 @@
+# ROS 2 Parameters for ARC-M Skill Library
+# Runtime configuration for deploying learned policies
+
+# =============================================================================
+# Node: arc_m_policy_manager
+# Manages switching between learned recovery skills
+# =============================================================================
+arc_m_policy_manager:
+  ros__parameters:
+    # General settings
+    update_rate: 100.0  # Hz - policy inference rate
+    device: "cuda"      # Options: cuda, cpu
+    
+    # Policy paths (ONNX format)
+    policies:
+      - name: "locomotion_flat"
+        path: "models/locomotion_flat.onnx"
+        description: "Standard flat terrain walking"
+        
+      - name: "locomotion_rough"
+        path: "models/locomotion_rough.onnx"
+        description: "Rough terrain adaptive walking"
+        
+      - name: "recovery_stuck"
+        path: "models/recovery_stuck.onnx"
+        description: "Recovery from stuck/trapped states"
+        
+      - name: "recovery_fallen"
+        path: "models/recovery_fallen.onnx"
+        description: "Self-righting after fall"
+        
+      - name: "push_object"
+        path: "models/push_object.onnx"
+        description: "Push heavy objects out of path"
+        
+      - name: "crawl_under"
+        path: "models/crawl_under.onnx"
+        description: "Crawl under low obstacles"
+    
+    # Default policy for normal operation
+    default_policy: "locomotion_flat"
+    
+    # Automatic policy switching
+    auto_switch:
+      enabled: true
+      # Stuck detection thresholds
+      stuck_velocity_threshold: 0.05  # m/s
+      stuck_duration: 2.0             # seconds
+      # Fall detection
+      orientation_threshold: 0.5      # radians from upright
+      
+    # Topics
+    topics:
+      command_vel: "/cmd_vel"
+      joint_states: "/joint_states"
+      imu: "/imu/data"
+      policy_action: "/policy/action"
+      current_policy: "/policy/current"
+
+# =============================================================================
+# Node: arc_m_magistral_planner
+# High-level reasoning for complex recovery scenarios
+# =============================================================================
+arc_m_magistral_planner:
+  ros__parameters:
+    # Magistral settings
+    magistral:
+      enabled: true
+      model: "magistral-medium-latest"
+      deployment: "api"  # or "local"
+      endpoint: "http://localhost:8000/v1"  # for local deployment
+      
+    # Reasoning triggers
+    triggers:
+      # Invoke Magistral when standard recovery fails
+      recovery_failure_count: 3
+      # Time-based reasoning
+      max_stuck_time: 30.0  # seconds before escalating to LLM
+      
+    # Context window (sensor history for reasoning)
+    context:
+      history_duration: 10.0  # seconds of sensor data
+      include_images: true
+      include_pointcloud: false
+      
+    # Topics
+    topics:
+      input:
+        rgb_camera: "/camera/image_raw"
+        depth_camera: "/depth/image_raw"
+        lidar: "/scan"
+        joint_states: "/joint_states"
+      output:
+        plan: "/magistral/recovery_plan"
+        reasoning: "/magistral/reasoning"
+
+# =============================================================================
+# Node: arc_m_robot_interface
+# Hardware abstraction for different robot platforms
+# =============================================================================
+arc_m_robot_interface:
+  ros__parameters:
+    # Robot platform
+    platform: "unitree_go2"  # Options: unitree_go2, anymal_d, spot, turtlebot
+    
+    # Joint configuration
+    joints:
+      # Unitree Go2 joint names
+      names:
+        - "FL_hip_joint"
+        - "FL_thigh_joint"
+        - "FL_calf_joint"
+        - "FR_hip_joint"
+        - "FR_thigh_joint"
+        - "FR_calf_joint"
+        - "RL_hip_joint"
+        - "RL_thigh_joint"
+        - "RL_calf_joint"
+        - "RR_hip_joint"
+        - "RR_thigh_joint"
+        - "RR_calf_joint"
+        
+      # Position limits (radians)
+      position_limits:
+        hip: [-0.8, 0.8]
+        thigh: [-1.0, 3.0]
+        calf: [-2.7, -0.8]
+        
+      # Velocity limits (rad/s)
+      velocity_limits: 20.0
+      
+      # Torque limits (Nm)
+      torque_limits: 30.0
+      
+    # PD control gains
+    pd_gains:
+      kp: [80.0, 80.0, 80.0, 80.0, 80.0, 80.0, 80.0, 80.0, 80.0, 80.0, 80.0, 80.0]
+      kd: [2.0, 2.0, 2.0, 2.0, 2.0, 2.0, 2.0, 2.0, 2.0, 2.0, 2.0, 2.0]
+      
+    # Communication settings
+    communication:
+      # Protocol for motor commands
+      protocol: "unitree_sdk2"  # Options: unitree_sdk2, ros_control, custom
+      # Command frequency
+      rate: 500.0  # Hz
+      
+    # Safety limits
+    safety:
+      enabled: true
+      emergency_stop_topic: "/emergency_stop"
+      max_command_latency: 0.1  # seconds
+      watchdog_timeout: 0.5    # seconds
+
+# =============================================================================
+# Node: arc_m_state_estimator
+# Fuse sensor data for observation vector
+# =============================================================================
+arc_m_state_estimator:
+  ros__parameters:
+    # Update rate
+    rate: 500.0  # Hz
+    
+    # IMU configuration
+    imu:
+      topic: "/imu/data"
+      frame_id: "imu_link"
+      # Orientation filter
+      filter: "madgwick"
+      # Noise parameters
+      gyro_noise: 0.01
+      accel_noise: 0.1
+      
+    # Joint state configuration
+    joint_states:
+      topic: "/joint_states"
+      # Filter for velocity estimation
+      velocity_filter:
+        type: "lowpass"
+        cutoff: 50.0  # Hz
+        
+    # Foot contact detection
+    contact_detection:
+      method: "force_threshold"  # Options: force_threshold, velocity, terrain_height
+      force_threshold: 20.0      # N
+      
+    # External force estimation (for detecting stuck states)
+    external_force:
+      enabled: true
+      estimation_method: "momentum_observer"
+      
+    # Output topics
+    topics:
+      observation: "/state/observation"
+      contact_states: "/state/contacts"
+      external_force: "/state/external_force"
+
+# =============================================================================
+# Node: arc_m_visualization
+# RViz and debugging visualization
+# =============================================================================
+arc_m_visualization:
+  ros__parameters:
+    enabled: true
+    
+    # Visualization options
+    visualize:
+      robot_model: true
+      joint_states: true
+      contact_points: true
+      commanded_trajectory: true
+      current_policy: true
+      magistral_reasoning: true
+      
+    # RViz markers
+    markers:
+      namespace: "arc_m"
+      contact_color: [0.0, 1.0, 0.0, 1.0]      # RGBA
+      force_color: [1.0, 0.0, 0.0, 1.0]
+      trajectory_color: [0.0, 0.5, 1.0, 0.8]
+      
+    # Update rates
+    rates:
+      markers: 30.0  # Hz
+      trajectory: 10.0
+
+# =============================================================================
+# Launch Configuration
+# =============================================================================
+launch:
+  # Nodes to launch
+  nodes:
+    - arc_m_policy_manager
+    - arc_m_robot_interface
+    - arc_m_state_estimator
+    - arc_m_visualization
+    
+  # Optional nodes (require additional setup)
+  optional_nodes:
+    - arc_m_magistral_planner  # Requires MISTRAL_API_KEY
+    
+  # Simulation vs hardware
+  use_sim_time: false
+  
+  # Logging
+  logging:
+    level: "info"  # Options: debug, info, warn, error
+    directory: "~/.ros/arc_m_logs"
